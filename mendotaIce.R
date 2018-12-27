@@ -127,4 +127,4 @@ p = ggplot(ices, aes(x = last2000, y = as.POSIXct(first2000))) +
   theme_minimal(base_size = 20) + theme(legend.key.height = grid::unit(1.5, "inches")) 
 
 image <- animate(p,fps=10,nframes = 163,width = 1000,height = 800,renderer = gifski_renderer(loop = F))
-anim_save(filename = '~/Downloads/mendotaIce2.gif',animation = image)
+anim_save(filename = '~/Downloads/mendotaIce_withTrendLine.gif',animation = image)
