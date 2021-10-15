@@ -8,17 +8,19 @@ library(lubridate)
 # library(devtools)
 # install_github('thomasp85/transformr')
 library(transformr)
+library(gganimate)
 
-ice = read_csv('~/Dropbox/RandomR/Mendota_Ice/MendotaIceData.csv')
+ice = read_csv('Data/MendotaIceData.csv')
 
 ############ Create dataframe for ice duration grid
 pts.grid2 <- expand.grid(x=seq.Date(from = as.Date('2001-02-15'),to = as.Date('2001-06-15'),by = '10 days'),
-                         y=seq.Date(from = as.Date('2000-11-7'),to = as.Date('2001-06-15'),by = '10 days'))
+                         y=seq.Date(from = as.Date('2000-11-7'),to = as.Date('2001-02-15'),by = '10 days'))
 pts.grid2$z <- pts.grid2$x - pts.grid2$y
 # Labels for contour lines 
 a = pts.grid2 %>% filter(x == as.Date('2001-02-15') | y == as.Date('2000-11-17')) %>%
   mutate(labels = paste0(z,' days')) %>%
   filter(z >= 10 & z <= 170)
+
 ##################################################################
 # Clean data 
 ices = ice %>% 
@@ -56,8 +58,9 @@ c_trans <- function(a, b, breaks = b$breaks, format = b$format) {
 rev_date <- c_trans("reverse", "time")
 
 ##################################################################
-########## Create Animation ###########
+########## Create Still ###########
 ##################################################################
+brks = seq(10, 170, by = 10) 
 p = ggplot(ices, aes(x = (last2000), y = as.POSIXct(first2000))) +
   geom_contour(data= pts.grid2, aes(x = (x), y = as.POSIXct(y), z = as.numeric(z)), 
                breaks=brks, colour="grey50",alpha = 0.4) +
@@ -65,8 +68,8 @@ p = ggplot(ices, aes(x = (last2000), y = as.POSIXct(first2000))) +
             aes(x = x, y = as.POSIXct(y), label = labels), 
             color = 'grey50', angle = 323, nudge_x = 2,alpha = 0.5, size = 6) +
   geom_point(aes(color = year),alpha = 0.8, size = 6, show.legend = T) +
-  transition_states(year, transition_length=1, state_length=1,wrap = F) +
-  labs(title = 'Lake Mendota Ice Cover, 1855 - {closest_state}') + shadow_mark() +
+  labs(title = 'Lake Mendota Ice Cover, 1855 - 2020',
+       caption = "Viz: Hilary Dugan - @hildug\nSource: http://www.aos.wisc.edu/~sco/lakes/Mendota-ice.html") +
   scale_colour_viridis_c(option = 'B',name = "Year",
                          limits = c(1855, 2018),
                          breaks = seq(1875,2000,by=25)) +
@@ -80,8 +83,45 @@ p = ggplot(ices, aes(x = (last2000), y = as.POSIXct(first2000))) +
   ylab('Date of Ice-On') + xlab('Date of Ice-Off') +
   theme_minimal(base_size = 20) + theme(legend.key.height = grid::unit(1.5, "inches"))
 
-image <- animate(p,fps=15,nframes = 163*2,width = 1000,height = 800,renderer = gifski_renderer(loop = F))
-anim_save(filename = '~/Downloads/mendotaIce.gif',animation = image)
+ggsave(p, filename = 'mendotaIce_2021_wrap.png', width = 14, height = 14*0.8, units = 'in')
+
+##################################################################
+########## Create Animation ###########
+##################################################################
+brks = seq(10, 170, by = 10) 
+
+p = ggplot(ices, aes(x = (last2000), y = as.POSIXct(first2000))) +
+  geom_contour(data= pts.grid2, aes(x = (x), y = as.POSIXct(y), z = as.numeric(z)), 
+               breaks=brks, colour="grey50",alpha = 0.4) +
+  geom_text(data = a,
+            aes(x = x, y = as.POSIXct(y), label = labels), 
+            color = 'grey50', angle = 323, nudge_x = 2,alpha = 0.5, size = 6) +
+  geom_point(aes(color = year),alpha = 0.8, size = 6, show.legend = T) +
+  transition_states(year) +
+  shadow_mark() +
+  labs(title = 'Lake Mendota Ice Cover, 1855 - {closest_state}',
+       caption = "Viz: Hilary Dugan - @hildug\nSource: http://www.aos.wisc.edu/~sco/lakes/Mendota-ice.html") +
+  # labs(title = 'Lake Mendota Ice Cover, 1855 - {closest_state}') + shadow_mark() +
+  scale_colour_viridis_c(option = 'B',name = "Year",
+                         limits = c(1855, 2018),
+                         breaks = seq(1875,2000,by=25)) +
+  scale_size(range = c(0, 6)) +
+  scale_y_continuous(trans = rev_date,
+                     labels=date_format("%b-%d"),
+                     limits = as.POSIXct(c('2001-02-15','2000-11-15'))) +
+  scale_x_date(date_breaks = "1 month", 
+               labels=date_format("%b-%d"),
+               limits = as.Date(c('2001-02-15','2001-05-15'))) +
+  ylab('Date of Ice-On') + xlab('Date of Ice-Off') +
+  theme_minimal(base_size = 20) + theme(legend.key.height = grid::unit(1.5, "inches"))
+# 
+# mendota.image <- animate(p,fps=15,nframes = 163*2,width = 1000,height = 800,renderer = gifski_renderer(loop = F))
+# anim_save(filename = 'mendotaIce_2021.gif',animation = mendota.image)
+
+mendota.wrap = animate(p + transition_states(year, wrap=FALSE) ,nframes=350, fps=15,
+                       width = 1000,height = 800,renderer = gifski_renderer(loop = F))
+anim_save(filename = 'mendotaIce_2021_wrap.gif',animation = mendota.wrap)
+
 
 ####################################################################################################
 ## With linear trend line ##
@@ -126,5 +166,5 @@ p = ggplot(ices, aes(x = last2000, y = as.POSIXct(first2000))) +
   ylab('Date of Ice-On') + xlab('Date of Ice-Off') +
   theme_minimal(base_size = 20) + theme(legend.key.height = grid::unit(1.5, "inches")) 
 
-image <- animate(p,fps=10,nframes = 163,width = 1000,height = 800,renderer = gifski_renderer(loop = F))
-anim_save(filename = '~/Downloads/mendotaIce_withTrendLine.gif',animation = image)
+mendota.image <- animate(p,fps=10,nframes = 163,width = 1000,height = 800,renderer = gifski_renderer(loop = F))
+anim_save(filename = '~/Downloads/mendotaIce_withTrendLine_2021.gif',animation = mendota.image)
